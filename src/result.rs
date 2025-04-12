@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
+use std::time::Instant;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ResultType {
@@ -34,6 +35,7 @@ pub struct CheckResult {
     pub extra_data: Option<serde_json::Value>,
     pub retry_count: u32,
     pub captures: HashMap<String, String>,
+    pub timestamp: u64,
 }
 
 impl CheckResult {
@@ -44,6 +46,7 @@ impl CheckResult {
             extra_data: None,
             retry_count: 0,
             captures: HashMap::new(),
+            timestamp: Instant::now().elapsed().as_secs(),
         }
     }
 

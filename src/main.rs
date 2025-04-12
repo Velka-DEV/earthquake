@@ -177,7 +177,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let module = Arc::new(SimpleModule);
 
-    let builder = CheckerBuilder::new("simple_demo")
+    let builder = CheckerBuilder::new("simple_demqsdqsdsqdo")
         .with_threads(10)
         .with_max_retries(3)
         .with_combo_file("data/combos.txt")?
