@@ -99,81 +99,6 @@ async fn display_stats(checker: Arc<earthquake::checker::Checker>) {
     }
 }
 
-fn analyze_captures(results_dir: &str) -> std::io::Result<()> {
-    use std::fs;
-
-    let entries = fs::read_dir(results_dir)?;
-    let mut session_dirs = Vec::new();
-
-    for entry in entries {
-        let entry = entry?;
-        let path = entry.path();
-
-        if path.is_dir() {
-            session_dirs.push(path);
-        }
-    }
-
-    session_dirs.sort_by(|a, b| {
-        let a_name = a.file_name().unwrap_or_default().to_string_lossy();
-        let b_name = b.file_name().unwrap_or_default().to_string_lossy();
-        b_name.cmp(&a_name)
-    });
-
-    if let Some(session_dir) = session_dirs.first() {
-        let hit_path = session_dir.join("hit.txt");
-
-        if hit_path.exists() {
-            println!("\n--- Analyzing Captures from Hits ---");
-            println!(
-                "Session: {}",
-                session_dir
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-            );
-
-            println!("\nAccounts with high points (>500):");
-            let points_data = util::extract_captures_from_file(&hit_path, "points")?;
-            for (combo, points) in points_data {
-                if let Ok(points_val) = points.parse::<u32>() {
-                    if points_val > 500 {
-                        println!("- {} has {} points", combo, points);
-                    }
-                }
-            }
-
-            println!("\nPremium accounts:");
-            let subscription_data = util::extract_captures_from_file(&hit_path, "subscription")?;
-            for (combo, sub_type) in subscription_data {
-                if sub_type == "Premium" {
-                    println!("- {}", combo);
-                }
-            }
-
-            println!("\nAccounts by login month:");
-            let mut month_counts = std::collections::HashMap::new();
-            let login_data = util::extract_captures_from_file(&hit_path, "lastLogin")?;
-
-            for (_, date) in login_data {
-                if let Some(month_part) = date.split('-').nth(1) {
-                    *month_counts.entry(month_part.to_string()).or_insert(0) += 1;
-                }
-            }
-
-            for (month, count) in month_counts {
-                println!("- Month {}: {} accounts", month, count);
-            }
-        } else {
-            println!("No hit results file found in the latest session");
-        }
-    } else {
-        println!("No session directories found");
-    }
-
-    Ok(())
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
@@ -182,7 +107,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let module = Arc::new(SimpleModule);
 
-    let builder = CheckerBuilder::new("simple_demqsdqsdsqdo")
+    let builder = CheckerBuilder::new("simple_demo")
         .with_threads(10)
         .with_max_retries(3)
         .with_combo_file("data/combos.txt")?
@@ -203,10 +128,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("All done!");
     println!("Results saved to results/simple_demo/ directory");
-
-    if let Err(e) = analyze_captures("results/simple_demo") {
-        println!("Error analyzing captures: {}", e);
-    }
 
     Ok(())
 }

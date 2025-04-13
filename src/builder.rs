@@ -1,9 +1,9 @@
+use crate::Result;
 use crate::checker::{CheckFunction, CheckModule, Checker};
 use crate::combo::{ComboProvider, FileComboProvider};
 use crate::config::Config;
 use crate::proxy::{FileProxyProvider, ProxyProvider};
 use crate::result::CheckResult;
-use crate::Result;
 use futures::Future;
 use reqwest::Client;
 use std::pin::Pin;
