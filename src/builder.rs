@@ -1,5 +1,5 @@
 use crate::Result;
-use crate::checker::{CheckFunction, CheckModule, Checker};
+use crate::checker::{CheckFunction, CheckModule, Checker, ResultCallback};
 use crate::combo::{ComboProvider, FileComboProvider};
 use crate::config::Config;
 use crate::proxy::{FileProxyProvider, ProxyProvider};
@@ -15,6 +15,7 @@ pub struct CheckerBuilder {
     combo_provider: Option<Arc<dyn ComboProvider>>,
     proxy_provider: Option<Arc<dyn ProxyProvider>>,
     check_fn: Option<CheckFunction>,
+    result_callback: Option<ResultCallback>,
 }
 
 impl CheckerBuilder {
@@ -24,6 +25,7 @@ impl CheckerBuilder {
             combo_provider: None,
             proxy_provider: None,
             check_fn: None,
+            result_callback: None,
         }
     }
 
@@ -54,6 +56,17 @@ impl CheckerBuilder {
 
     pub fn with_combo_provider(mut self, provider: Arc<dyn ComboProvider>) -> Self {
         self.combo_provider = Some(provider);
+        self
+    }
+
+    pub fn with_result_callback<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(crate::combo::Combo, CheckResult, Option<crate::proxy::Proxy>)
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.result_callback = Some(Arc::new(callback));
         self
     }
 
@@ -134,6 +147,10 @@ impl CheckerBuilder {
 
         if let Some(check_fn) = self.check_fn {
             checker.with_check_function(check_fn);
+        }
+
+        if let Some(callback) = self.result_callback {
+            checker.with_result_callback(callback);
         }
 
         Ok(checker)

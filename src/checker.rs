@@ -1,3 +1,4 @@
+use crate::Result;
 use crate::combo::{Combo, ComboProvider};
 use crate::config::Config;
 use crate::error::Error;
@@ -5,20 +6,21 @@ use crate::proxy::{Proxy, ProxyProvider};
 use crate::result::{CheckResult, ResultType};
 use crate::stats::Stats;
 use crate::util;
-use crate::Result;
 use async_trait::async_trait;
 use futures::stream::{self, StreamExt};
 use reqwest::Client;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::{mpsc, watch, RwLock};
+use tokio::sync::{RwLock, mpsc, watch};
 
 pub type CheckFunction = Arc<
     dyn Fn(Arc<Client>, Combo, Option<Proxy>) -> futures::future::BoxFuture<'static, CheckResult>
         + Send
         + Sync,
 >;
+
+pub type ResultCallback = Arc<dyn Fn(Combo, CheckResult, Option<Proxy>) + Send + Sync>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CheckerState {
@@ -39,6 +41,7 @@ pub struct Checker {
     state_notify: Arc<watch::Sender<CheckerState>>,
     state_rx: watch::Receiver<CheckerState>,
     session_start_time: String,
+    result_callback: Option<ResultCallback>,
 }
 
 impl Checker {
@@ -55,6 +58,7 @@ impl Checker {
             state_notify: Arc::new(state_tx),
             state_rx,
             session_start_time: util::format_datetime_now(),
+            result_callback: None,
         }
     }
 
@@ -68,6 +72,10 @@ impl Checker {
 
     pub fn with_proxy_provider(&mut self, provider: Arc<dyn ProxyProvider>) {
         self.proxy_provider = Some(provider);
+    }
+
+    pub fn with_result_callback(&mut self, callback: ResultCallback) {
+        self.result_callback = Some(callback);
     }
 
     pub async fn start(&self) -> Result<()> {
@@ -94,13 +102,15 @@ impl Checker {
         stats.start();
         drop(stats);
 
-        let (result_tx, mut result_rx) = mpsc::channel::<(Combo, CheckResult)>(1000);
+        let (result_tx, mut result_rx) = mpsc::channel::<(Combo, CheckResult, Option<Proxy>)>(1000);
 
         let config_clone = self.config.clone();
         let results_dir = format!(
             "{}/{}/{}",
             config_clone.save_dir, config_clone.module_name, self.session_start_time
         );
+
+        let result_callback = self.result_callback.clone();
 
         let _result_handler = tokio::spawn(async move {
             if let Err(e) = util::create_directory_if_not_exists(&results_dir) {
@@ -110,7 +120,12 @@ impl Checker {
 
             let mut result_paths = std::collections::HashMap::new();
 
-            while let Some((combo, result)) = result_rx.recv().await {
+            while let Some((combo, result, proxy)) = result_rx.recv().await {
+                // Call the callback if provided
+                if let Some(ref callback) = result_callback {
+                    callback(combo.clone(), result.clone(), proxy.clone());
+                }
+
                 let result_type = result.result_type.to_string();
 
                 let path = result_paths
@@ -197,6 +212,7 @@ impl Checker {
 
                             let mut result = check_fn(client, combo.clone(), proxy.clone()).await;
                             let mut retry_count = 0;
+                            let mut final_proxy = proxy.clone();
 
                             while result.result_type == ResultType::Retry
                                 && retry_count < max_retries
@@ -215,6 +231,8 @@ impl Checker {
                                     None
                                 };
 
+                                final_proxy = new_proxy.clone();
+
                                 match util::build_http_client(new_proxy.as_ref()).await {
                                     Ok(new_client) => {
                                         result = check_fn(
@@ -232,7 +250,7 @@ impl Checker {
                             stats.write().await.increment_result(result.result_type);
 
                             let result = result.with_retry_count(retry_count);
-                            if let Err(_) = result_tx.send((combo, result)).await {
+                            if let Err(_) = result_tx.send((combo, result, final_proxy)).await {
                                 break;
                             }
                         }

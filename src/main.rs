@@ -5,7 +5,6 @@ use earthquake::{
     proxy::Proxy,
     result::CheckResult,
     stats::Stats,
-    util,
 };
 use reqwest::Client;
 use std::sync::Arc;
