@@ -4,6 +4,21 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone)]
+pub struct DetailedStats {
+    pub start_time: Option<Instant>,
+    pub pause_time: Option<Instant>,
+    pub total_paused_time: Duration,
+    pub total_combos: usize,
+    pub checked: usize,
+    pub hits: usize,
+    pub free: usize,
+    pub failed: usize,
+    pub invalid: usize,
+    pub banned: usize,
+    pub retries: usize,
+}
+
+#[derive(Debug, Clone)]
 pub struct Stats {
     start_time: Option<Instant>,
     pause_time: Option<Instant>,
@@ -107,11 +122,7 @@ impl Stats {
         let total = self.total();
         let checked = self.checked();
 
-        if total > checked {
-            total - checked
-        } else {
-            0
-        }
+        if total > checked { total - checked } else { 0 }
     }
 
     pub fn progress(&self) -> f64 {
@@ -190,6 +201,24 @@ impl Stats {
             format!("{}m {}s", minutes, seconds)
         } else {
             format!("{}s", seconds)
+        }
+    }
+
+    pub fn get_detailed_stats(&self) -> DetailedStats {
+        let result_counts = self.result_counts.read();
+
+        DetailedStats {
+            start_time: self.start_time,
+            pause_time: self.pause_time,
+            total_paused_time: self.total_paused_time,
+            total_combos: *self.total_combos.read(),
+            checked: *self.checked.read(),
+            hits: *result_counts.get(&ResultType::Hit).unwrap_or(&0),
+            free: *result_counts.get(&ResultType::Free).unwrap_or(&0),
+            failed: *result_counts.get(&ResultType::Failed).unwrap_or(&0),
+            invalid: *result_counts.get(&ResultType::Invalid).unwrap_or(&0),
+            banned: *result_counts.get(&ResultType::Banned).unwrap_or(&0),
+            retries: *result_counts.get(&ResultType::Retry).unwrap_or(&0),
         }
     }
 }
