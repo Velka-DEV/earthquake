@@ -1,5 +1,5 @@
-use crate::error::Error;
 use crate::Result;
+use crate::error::Error;
 use async_trait::async_trait;
 use rand::prelude::*;
 use reqwest::Proxy as ReqwestProxy;
@@ -82,7 +82,7 @@ impl Proxy {
                 return Err(Error::InvalidProxy(format!(
                     "Unsupported scheme: {}",
                     scheme
-                )))
+                )));
             }
         };
 
@@ -98,12 +98,11 @@ impl Proxy {
     }
 
     pub fn to_url(&self) -> String {
-        let auth_part =
-            if let (Some(ref username), Some(ref password)) = (&self.username, &self.password) {
-                format!("{}:{}@", username, password)
-            } else {
-                String::new()
-            };
+        let auth_part = if let (Some(username), Some(password)) = (&self.username, &self.password) {
+            format!("{}:{}@", username, password)
+        } else {
+            String::new()
+        };
 
         format!(
             "{}://{}{}:{}",
