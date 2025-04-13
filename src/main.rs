@@ -210,9 +210,9 @@ fn create_sample_files() -> std::io::Result<()> {
     use std::fs::{self, File};
     use std::io::Write;
 
-    fs::create_dir_all("examples")?;
+    fs::create_dir_all("data")?;
 
-    let mut file = File::create("examples/combos.txt")?;
+    let mut file = File::create("data/combos.txt")?;
 
     for i in 1..=100 {
         writeln!(file, "user{}:password{}", i, i)?;

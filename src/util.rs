@@ -2,6 +2,7 @@ use crate::proxy::Proxy;
 use crate::Result;
 use chrono::Local;
 use reqwest::{Client, ClientBuilder};
+use rquest_util::Emulation;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, BufRead, Write};
@@ -38,6 +39,24 @@ pub async fn build_http_client(proxy: Option<&Proxy>) -> Result<Client> {
     }
 
     Ok(client_builder.build()?)
+}
+
+pub async fn build_rquest_client(
+    emulation: Emulation,
+    proxies: Option<Vec<Proxy>>,
+) -> Result<rquest::Client> {
+    let client = rquest::Client::new();
+
+    if let Some(proxies) = proxies {
+        let rquest_proxies: Result<Vec<rquest::Proxy>> =
+            proxies.iter().map(|p| p.to_rquest_proxy()).collect();
+
+        client.update().proxies(rquest_proxies?).apply()?;
+    }
+
+    client.update().emulation(emulation).apply()?;
+
+    Ok(client)
 }
 
 pub fn random_string(length: usize) -> String {

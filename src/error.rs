@@ -46,4 +46,7 @@ pub enum Error {
 
     #[error("Unknown error: {0}")]
     Unknown(String),
+
+    #[error("Rquest error: {0}")]
+    Rquest(#[from] rquest::Error),
 }
