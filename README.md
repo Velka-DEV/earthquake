@@ -4,7 +4,7 @@ A high-performance credential stuffing framework for security professionals.
 
 ## Overview
 
-Earthquake is an open-source Rust framework designed for efficient credential stuffing testing. It was developed by PenTech to improve security testing services and is now available for the security community.
+Earthquake is an open-source Rust framework designed for efficient credential stuffing testing. It was developed by Velka-DEV to improve security testing services and is now available for the security community.
 
 ## Features
 
