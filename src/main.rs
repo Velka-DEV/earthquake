@@ -32,7 +32,12 @@ impl CheckModule for SimpleModule {
         "A simple example module for demonstration"
     }
 
-    async fn check(&self, client: Arc<Client>, combo: Combo, proxy: Option<Proxy>) -> CheckResult {
+    async fn check(
+        &self,
+        _client: Arc<Client>,
+        combo: Combo,
+        _proxy: Option<Proxy>,
+    ) -> CheckResult {
         sleep(Duration::from_millis(100)).await;
 
         let hash = combo.username.chars().map(|c| c as u32).sum::<u32>();
