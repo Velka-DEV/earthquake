@@ -1,4 +1,4 @@
-use crate::result::ResultType;
+use crate::result::ResultStatus;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -25,19 +25,19 @@ pub struct Stats {
     total_paused_time: Duration,
     total_combos: Arc<parking_lot::RwLock<usize>>,
     checked: Arc<parking_lot::RwLock<usize>>,
-    result_counts: Arc<parking_lot::RwLock<HashMap<ResultType, usize>>>,
+    result_counts: Arc<parking_lot::RwLock<HashMap<ResultStatus, usize>>>,
 }
 
 impl Default for Stats {
     fn default() -> Self {
         let mut result_counts = HashMap::new();
 
-        result_counts.insert(ResultType::Hit, 0);
-        result_counts.insert(ResultType::Free, 0);
-        result_counts.insert(ResultType::Failed, 0);
-        result_counts.insert(ResultType::Invalid, 0);
-        result_counts.insert(ResultType::Banned, 0);
-        result_counts.insert(ResultType::Retry, 0);
+        result_counts.insert(ResultStatus::Hit, 0);
+        result_counts.insert(ResultStatus::Free, 0);
+        result_counts.insert(ResultStatus::Failed, 0);
+        result_counts.insert(ResultStatus::Invalid, 0);
+        result_counts.insert(ResultStatus::Banned, 0);
+        result_counts.insert(ResultStatus::Retry, 0);
 
         Self {
             start_time: None,
@@ -86,7 +86,7 @@ impl Stats {
         *checked += 1;
     }
 
-    pub fn increment_result(&self, result_type: ResultType) {
+    pub fn increment_result(&self, result_type: ResultStatus) {
         let mut counts = self.result_counts.write();
         *counts.entry(result_type).or_insert(0) += 1;
     }
@@ -161,32 +161,32 @@ impl Stats {
         Duration::from_secs((minutes * 60.0) as u64)
     }
 
-    pub fn get_result_count(&self, result_type: ResultType) -> usize {
+    pub fn get_result_count(&self, result_type: ResultStatus) -> usize {
         *self.result_counts.read().get(&result_type).unwrap_or(&0)
     }
 
     pub fn hits(&self) -> usize {
-        self.get_result_count(ResultType::Hit)
+        self.get_result_count(ResultStatus::Hit)
     }
 
     pub fn free(&self) -> usize {
-        self.get_result_count(ResultType::Free)
+        self.get_result_count(ResultStatus::Free)
     }
 
     pub fn failed(&self) -> usize {
-        self.get_result_count(ResultType::Failed)
+        self.get_result_count(ResultStatus::Failed)
     }
 
     pub fn invalid(&self) -> usize {
-        self.get_result_count(ResultType::Invalid)
+        self.get_result_count(ResultStatus::Invalid)
     }
 
     pub fn banned(&self) -> usize {
-        self.get_result_count(ResultType::Banned)
+        self.get_result_count(ResultStatus::Banned)
     }
 
     pub fn retries(&self) -> usize {
-        self.get_result_count(ResultType::Retry)
+        self.get_result_count(ResultStatus::Retry)
     }
 
     pub fn format_duration(duration: Duration) -> String {
@@ -213,12 +213,12 @@ impl Stats {
             total_paused_time: self.total_paused_time,
             total_combos: *self.total_combos.read(),
             checked: *self.checked.read(),
-            hits: *result_counts.get(&ResultType::Hit).unwrap_or(&0),
-            free: *result_counts.get(&ResultType::Free).unwrap_or(&0),
-            failed: *result_counts.get(&ResultType::Failed).unwrap_or(&0),
-            invalid: *result_counts.get(&ResultType::Invalid).unwrap_or(&0),
-            banned: *result_counts.get(&ResultType::Banned).unwrap_or(&0),
-            retries: *result_counts.get(&ResultType::Retry).unwrap_or(&0),
+            hits: *result_counts.get(&ResultStatus::Hit).unwrap_or(&0),
+            free: *result_counts.get(&ResultStatus::Free).unwrap_or(&0),
+            failed: *result_counts.get(&ResultStatus::Failed).unwrap_or(&0),
+            invalid: *result_counts.get(&ResultStatus::Invalid).unwrap_or(&0),
+            banned: *result_counts.get(&ResultStatus::Banned).unwrap_or(&0),
+            retries: *result_counts.get(&ResultStatus::Retry).unwrap_or(&0),
         }
     }
 }

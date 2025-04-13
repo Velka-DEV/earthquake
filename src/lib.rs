@@ -14,7 +14,7 @@ pub use combo::{Combo, ComboProvider};
 pub use config::Config;
 pub use error::Error;
 pub use proxy::{Proxy, ProxyProvider};
-pub use result::{CheckResult, ResultType};
+pub use result::{CheckResult, ResultStatus};
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 

@@ -4,33 +4,33 @@ use std::fmt;
 use std::time::Instant;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ResultType {
+pub enum ResultStatus {
     Hit,
     Free,
     Failed,
     Invalid,
     Banned,
     Retry,
-    Custom(u8),
+    Unknown,
 }
 
-impl fmt::Display for ResultType {
+impl fmt::Display for ResultStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ResultType::Hit => write!(f, "hit"),
-            ResultType::Free => write!(f, "free"),
-            ResultType::Failed => write!(f, "failed"),
-            ResultType::Invalid => write!(f, "invalid"),
-            ResultType::Banned => write!(f, "banned"),
-            ResultType::Retry => write!(f, "retry"),
-            ResultType::Custom(id) => write!(f, "custom_{}", id),
+            ResultStatus::Hit => write!(f, "hit"),
+            ResultStatus::Free => write!(f, "free"),
+            ResultStatus::Failed => write!(f, "failed"),
+            ResultStatus::Invalid => write!(f, "invalid"),
+            ResultStatus::Banned => write!(f, "banned"),
+            ResultStatus::Retry => write!(f, "retry"),
+            ResultStatus::Unknown => write!(f, "unknown"),
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CheckResult {
-    pub result_type: ResultType,
+    pub status: ResultStatus,
     pub message: Option<String>,
     pub extra_data: Option<serde_json::Value>,
     pub retry_count: u32,
@@ -39,9 +39,9 @@ pub struct CheckResult {
 }
 
 impl CheckResult {
-    pub fn new(result_type: ResultType) -> Self {
+    pub fn new(status: ResultStatus) -> Self {
         Self {
-            result_type,
+            status,
             message: None,
             extra_data: None,
             retry_count: 0,
@@ -84,30 +84,30 @@ impl CheckResult {
     }
 
     pub fn hit() -> Self {
-        Self::new(ResultType::Hit)
+        Self::new(ResultStatus::Hit)
     }
 
     pub fn free() -> Self {
-        Self::new(ResultType::Free)
+        Self::new(ResultStatus::Free)
     }
 
     pub fn failed() -> Self {
-        Self::new(ResultType::Failed)
+        Self::new(ResultStatus::Failed)
     }
 
     pub fn invalid() -> Self {
-        Self::new(ResultType::Invalid)
+        Self::new(ResultStatus::Invalid)
     }
 
     pub fn banned() -> Self {
-        Self::new(ResultType::Banned)
+        Self::new(ResultStatus::Banned)
     }
 
     pub fn retry() -> Self {
-        Self::new(ResultType::Retry)
+        Self::new(ResultStatus::Retry)
     }
 
-    pub fn custom(id: u8) -> Self {
-        Self::new(ResultType::Custom(id))
+    pub fn unknown() -> Self {
+        Self::new(ResultStatus::Unknown)
     }
 }

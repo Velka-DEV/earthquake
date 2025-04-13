@@ -3,7 +3,7 @@ use crate::combo::{Combo, ComboProvider};
 use crate::config::Config;
 use crate::error::Error;
 use crate::proxy::{Proxy, ProxyProvider};
-use crate::result::{CheckResult, ResultType};
+use crate::result::{CheckResult, ResultStatus};
 use crate::stats::Stats;
 use crate::util;
 use async_trait::async_trait;
@@ -27,7 +27,7 @@ pub enum CheckerState {
     Idle,
     Running,
     Paused,
-    Stopping,
+    Stopped,
     Finished,
 }
 
@@ -126,10 +126,10 @@ impl Checker {
                     callback(combo.clone(), result.clone(), proxy.clone());
                 }
 
-                let result_type = result.result_type.to_string();
+                let result_type = result.status.to_string();
 
                 let path = result_paths
-                    .entry(result.result_type)
+                    .entry(result.status)
                     .or_insert_with(|| format!("{}/{}.txt", results_dir, result_type));
 
                 let mut content = format!("{}", combo);
@@ -181,7 +181,7 @@ impl Checker {
                     async move {
                         loop {
                             let current_state = *state.read().await;
-                            if current_state == CheckerState::Stopping
+                            if current_state == CheckerState::Stopped
                                 || current_state == CheckerState::Finished
                             {
                                 break;
@@ -214,8 +214,7 @@ impl Checker {
                             let mut retry_count = 0;
                             let mut final_proxy = proxy.clone();
 
-                            while result.result_type == ResultType::Retry
-                                && retry_count < max_retries
+                            while result.status == ResultStatus::Retry && retry_count < max_retries
                             {
                                 retry_count += 1;
 
@@ -247,7 +246,7 @@ impl Checker {
                             }
 
                             stats.write().await.increment_checked();
-                            stats.write().await.increment_result(result.result_type);
+                            stats.write().await.increment_result(result.status);
 
                             let result = result.with_retry_count(retry_count);
                             if let Err(_) = result_tx.send((combo, result, final_proxy)).await {
@@ -298,9 +297,9 @@ impl Checker {
         let mut state = self.state.write().await;
 
         if *state == CheckerState::Running || *state == CheckerState::Paused {
-            *state = CheckerState::Stopping;
+            *state = CheckerState::Stopped;
             self.state_notify
-                .send(CheckerState::Stopping)
+                .send(CheckerState::Stopped)
                 .map_err(|_| Error::Thread("Failed to notify state change".to_string()))?;
         }
 
