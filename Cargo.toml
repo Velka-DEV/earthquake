@@ -7,7 +7,7 @@ license = "GPL-3.0"
 repository = "https://github.com/Velka-DEV/earthquake"
 authors = ["Velka-DEV <contact@velka.dev>"]
 readme = "README.md"
-keywords = ["security", "testing", "credential stuffing"]
+keywords = ["security", "testing", "credential-stuffing"]
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
