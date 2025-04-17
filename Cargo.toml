@@ -42,3 +42,4 @@ toml = "0.8"
 parking_lot = "0.12"
 rquest = "5"
 rquest-util = "2"
+cli = { package = "earthquake-cli", version = "0.1.0", path = "cli" }
