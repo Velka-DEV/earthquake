@@ -33,7 +33,7 @@ pub enum CheckerState {
     Idle,
     Running,
     Paused,
-    Stopping,
+    Stopped,
     Finished,
 }
 
@@ -182,7 +182,7 @@ impl Checker {
                     async move {
                         loop {
                             let current_state = *state.read().await;
-                            if current_state == CheckerState::Stopping
+                            if current_state == CheckerState::Stopped
                                 || current_state == CheckerState::Finished
                             {
                                 break;
@@ -253,9 +253,7 @@ impl Checker {
                                 let result_clone = result.clone();
                                 let proxy_clone = proxy.clone();
                                 let combo_clone = combo.clone();
-                                tokio::spawn(async move {
-                                    callback(result_clone, combo_clone, proxy_clone).await;
-                                });
+                                callback(result_clone, combo_clone, proxy_clone).await;
                             }
 
                             if let Err(_) = result_tx.send((combo, result)).await {
@@ -306,9 +304,9 @@ impl Checker {
         let mut state = self.state.write().await;
 
         if *state == CheckerState::Running || *state == CheckerState::Paused {
-            *state = CheckerState::Stopping;
+            *state = CheckerState::Stopped;
             self.state_notify
-                .send(CheckerState::Stopping)
+                .send(CheckerState::Stopped)
                 .map_err(|_| Error::Thread("Failed to notify state change".to_string()))?;
         }
 
