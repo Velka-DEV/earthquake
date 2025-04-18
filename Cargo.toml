@@ -1,6 +1,6 @@
 [package]
 name = "earthquake"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 description = "A credential stuffing framework designed for security testing"
 license = "GPL-3.0"
@@ -42,4 +42,3 @@ toml = "0.8"
 parking_lot = "0.12"
 rquest = "5"
 rquest-util = "2"
-cli = { package = "earthquake-cli", version = "0.1.0", path = "cli" }
