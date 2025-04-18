@@ -1,10 +1,10 @@
-use crate::Result;
 use crate::checker::CheckResultCallback;
 use crate::checker::{CheckFunction, CheckModule, Checker};
 use crate::combo::{ComboProvider, FileComboProvider};
 use crate::config::Config;
 use crate::proxy::{FileProxyProvider, ProxyProvider};
 use crate::result::CheckResult;
+use crate::{Combo, Result};
 use futures::Future;
 use reqwest::Client;
 use std::pin::Pin;
@@ -126,11 +126,11 @@ impl CheckerBuilder {
 
     pub fn with_check_result_callback<F, Fut>(mut self, f: F) -> Self
     where
-        F: Fn(CheckResult, Option<crate::proxy::Proxy>) -> Fut + Send + Sync + 'static,
+        F: Fn(CheckResult, Combo, Option<crate::proxy::Proxy>) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        let callback = Arc::new(move |result, proxy| {
-            let future = f(result, proxy);
+        let callback = Arc::new(move |result, combo, proxy| {
+            let future = f(result, combo, proxy);
             Box::pin(future) as Pin<Box<dyn Future<Output = ()> + Send>>
         });
         self.check_result_callback = Some(callback);

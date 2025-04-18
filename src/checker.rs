@@ -23,7 +23,9 @@ pub type CheckFunction = Arc<
 >;
 
 pub type CheckResultCallback = Arc<
-    dyn Fn(CheckResult, Option<Proxy>) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
+    dyn Fn(CheckResult, Combo, Option<Proxy>) -> Pin<Box<dyn Future<Output = ()> + Send>>
+        + Send
+        + Sync,
 >;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -250,8 +252,9 @@ impl Checker {
                                 let callback = callback.clone();
                                 let result_clone = result.clone();
                                 let proxy_clone = proxy.clone();
+                                let combo_clone = combo.clone();
                                 tokio::spawn(async move {
-                                    callback(result_clone, proxy_clone).await;
+                                    callback(result_clone, combo_clone, proxy_clone).await;
                                 });
                             }
 
