@@ -1,5 +1,6 @@
 use crate::Result;
-use crate::checker::{CheckFunction, CheckModule, Checker, ResultCallback};
+use crate::checker::CheckResultCallback;
+use crate::checker::{CheckFunction, CheckModule, Checker};
 use crate::combo::{ComboProvider, FileComboProvider};
 use crate::config::Config;
 use crate::proxy::{FileProxyProvider, ProxyProvider};
@@ -15,7 +16,7 @@ pub struct CheckerBuilder {
     combo_provider: Option<Arc<dyn ComboProvider>>,
     proxy_provider: Option<Arc<dyn ProxyProvider>>,
     check_fn: Option<CheckFunction>,
-    result_callback: Option<ResultCallback>,
+    check_result_callback: Option<CheckResultCallback>,
 }
 
 impl CheckerBuilder {
@@ -25,7 +26,7 @@ impl CheckerBuilder {
             combo_provider: None,
             proxy_provider: None,
             check_fn: None,
-            result_callback: None,
+            check_result_callback: None,
         }
     }
 
@@ -56,23 +57,6 @@ impl CheckerBuilder {
 
     pub fn with_combo_provider(mut self, provider: Arc<dyn ComboProvider>) -> Self {
         self.combo_provider = Some(provider);
-        self
-    }
-
-    pub fn with_result_callback<F, Fut>(mut self, f: F) -> Self
-    where
-        F: Fn(crate::combo::Combo, CheckResult, Option<crate::proxy::Proxy>) -> Fut
-            + Send
-            + Sync
-            + 'static,
-        Fut: Future<Output = ()> + Send + 'static,
-    {
-        let callback = Arc::new(move |combo, result, proxy| {
-            let future = f(combo, result, proxy);
-            Box::pin(future) as Pin<Box<dyn Future<Output = ()> + Send>>
-        });
-
-        self.result_callback = Some(callback);
         self
     }
 
@@ -140,6 +124,19 @@ impl CheckerBuilder {
         })
     }
 
+    pub fn with_check_result_callback<F, Fut>(mut self, f: F) -> Self
+    where
+        F: Fn(CheckResult, Option<crate::proxy::Proxy>) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
+    {
+        let callback = Arc::new(move |result, proxy| {
+            let future = f(result, proxy);
+            Box::pin(future) as Pin<Box<dyn Future<Output = ()> + Send>>
+        });
+        self.check_result_callback = Some(callback);
+        self
+    }
+
     pub fn build(self) -> Result<Checker> {
         let mut checker = Checker::new(self.config);
 
@@ -155,8 +152,8 @@ impl CheckerBuilder {
             checker.with_check_function(check_fn);
         }
 
-        if let Some(callback) = self.result_callback {
-            checker.with_result_callback(callback);
+        if let Some(callback) = self.check_result_callback {
+            checker.with_check_result_callback(callback);
         }
 
         Ok(checker)

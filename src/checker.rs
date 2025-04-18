@@ -7,9 +7,11 @@ use crate::result::{CheckResult, ResultStatus};
 use crate::stats::Stats;
 use crate::util;
 use async_trait::async_trait;
+use futures::Future;
 use futures::stream::{self, StreamExt};
 use reqwest::Client;
 use std::path::Path;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{RwLock, mpsc, watch};
@@ -20,10 +22,8 @@ pub type CheckFunction = Arc<
         + Sync,
 >;
 
-pub type ResultCallback = Arc<
-    dyn Fn(Combo, CheckResult, Option<Proxy>) -> futures::future::BoxFuture<'static, ()>
-        + Send
-        + Sync,
+pub type CheckResultCallback = Arc<
+    dyn Fn(CheckResult, Option<Proxy>) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync,
 >;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,7 +31,7 @@ pub enum CheckerState {
     Idle,
     Running,
     Paused,
-    Stopped,
+    Stopping,
     Finished,
 }
 
@@ -40,12 +40,12 @@ pub struct Checker {
     check_fn: Option<CheckFunction>,
     combo_provider: Option<Arc<dyn ComboProvider>>,
     proxy_provider: Option<Arc<dyn ProxyProvider>>,
+    check_result_callback: Option<CheckResultCallback>,
     state: Arc<RwLock<CheckerState>>,
     stats: Arc<RwLock<Stats>>,
     state_notify: Arc<watch::Sender<CheckerState>>,
     state_rx: watch::Receiver<CheckerState>,
     session_start_time: String,
-    result_callback: Option<ResultCallback>,
 }
 
 impl Checker {
@@ -57,12 +57,12 @@ impl Checker {
             check_fn: None,
             combo_provider: None,
             proxy_provider: None,
+            check_result_callback: None,
             state: Arc::new(RwLock::new(CheckerState::Idle)),
             stats: Arc::new(RwLock::new(Stats::new())),
             state_notify: Arc::new(state_tx),
             state_rx,
             session_start_time: util::format_datetime_now(),
-            result_callback: None,
         }
     }
 
@@ -78,8 +78,8 @@ impl Checker {
         self.proxy_provider = Some(provider);
     }
 
-    pub fn with_result_callback(&mut self, callback: ResultCallback) {
-        self.result_callback = Some(callback);
+    pub fn with_check_result_callback(&mut self, callback: CheckResultCallback) {
+        self.check_result_callback = Some(callback);
     }
 
     pub async fn start(&self) -> Result<()> {
@@ -106,15 +106,13 @@ impl Checker {
         stats.start();
         drop(stats);
 
-        let (result_tx, mut result_rx) = mpsc::channel::<(Combo, CheckResult, Option<Proxy>)>(1000);
+        let (result_tx, mut result_rx) = mpsc::channel::<(Combo, CheckResult)>(1000);
 
         let config_clone = self.config.clone();
         let results_dir = format!(
             "{}/{}/{}",
             config_clone.save_dir, config_clone.module_name, self.session_start_time
         );
-
-        let result_callback = self.result_callback.clone();
 
         let _result_handler = tokio::spawn(async move {
             if let Err(e) = util::create_directory_if_not_exists(&results_dir) {
@@ -124,12 +122,7 @@ impl Checker {
 
             let mut result_paths = std::collections::HashMap::new();
 
-            while let Some((combo, result, proxy)) = result_rx.recv().await {
-                // Call the callback if provided
-                if let Some(ref callback) = result_callback {
-                    callback(combo.clone(), result.clone(), proxy.clone()).await;
-                }
-
+            while let Some((combo, result)) = result_rx.recv().await {
                 let result_type = result.status.to_string();
 
                 let path = result_paths
@@ -169,6 +162,7 @@ impl Checker {
         let proxy_provider = self.proxy_provider.clone();
         let config = self.config.clone();
         let result_tx = Arc::new(result_tx);
+        let check_result_callback = self.check_result_callback.clone();
 
         tokio::spawn(async move {
             let max_retries = config.max_retries;
@@ -181,11 +175,12 @@ impl Checker {
                     let combo_provider = combo_provider.clone();
                     let proxy_provider = proxy_provider.clone();
                     let result_tx = result_tx.clone();
+                    let check_result_callback = check_result_callback.clone();
 
                     async move {
                         loop {
                             let current_state = *state.read().await;
-                            if current_state == CheckerState::Stopped
+                            if current_state == CheckerState::Stopping
                                 || current_state == CheckerState::Finished
                             {
                                 break;
@@ -216,7 +211,6 @@ impl Checker {
 
                             let mut result = check_fn(client, combo.clone(), proxy.clone()).await;
                             let mut retry_count = 0;
-                            let mut final_proxy = proxy.clone();
 
                             while result.status == ResultStatus::Retry && retry_count < max_retries
                             {
@@ -233,8 +227,6 @@ impl Checker {
                                 } else {
                                     None
                                 };
-
-                                final_proxy = new_proxy.clone();
 
                                 match util::build_http_client(new_proxy.as_ref()).await {
                                     Ok(new_client) => {
@@ -253,7 +245,17 @@ impl Checker {
                             stats.write().await.increment_result(result.status);
 
                             let result = result.with_retry_count(retry_count);
-                            if let Err(_) = result_tx.send((combo, result, final_proxy)).await {
+
+                            if let Some(callback) = check_result_callback.as_ref() {
+                                let callback = callback.clone();
+                                let result_clone = result.clone();
+                                let proxy_clone = proxy.clone();
+                                tokio::spawn(async move {
+                                    callback(result_clone, proxy_clone).await;
+                                });
+                            }
+
+                            if let Err(_) = result_tx.send((combo, result)).await {
                                 break;
                             }
                         }
@@ -301,9 +303,9 @@ impl Checker {
         let mut state = self.state.write().await;
 
         if *state == CheckerState::Running || *state == CheckerState::Paused {
-            *state = CheckerState::Stopped;
+            *state = CheckerState::Stopping;
             self.state_notify
-                .send(CheckerState::Stopped)
+                .send(CheckerState::Stopping)
                 .map_err(|_| Error::Thread("Failed to notify state change".to_string()))?;
         }
 
