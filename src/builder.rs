@@ -59,14 +59,20 @@ impl CheckerBuilder {
         self
     }
 
-    pub fn with_result_callback<F>(mut self, callback: F) -> Self
+    pub fn with_result_callback<F, Fut>(mut self, f: F) -> Self
     where
-        F: Fn(crate::combo::Combo, CheckResult, Option<crate::proxy::Proxy>)
+        F: Fn(crate::combo::Combo, CheckResult, Option<crate::proxy::Proxy>) -> Fut
             + Send
             + Sync
             + 'static,
+        Fut: Future<Output = ()> + Send + 'static,
     {
-        self.result_callback = Some(Arc::new(callback));
+        let callback = Arc::new(move |combo, result, proxy| {
+            let future = f(combo, result, proxy);
+            Box::pin(future) as Pin<Box<dyn Future<Output = ()> + Send>>
+        });
+
+        self.result_callback = Some(callback);
         self
     }
 

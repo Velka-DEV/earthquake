@@ -20,7 +20,11 @@ pub type CheckFunction = Arc<
         + Sync,
 >;
 
-pub type ResultCallback = Arc<dyn Fn(Combo, CheckResult, Option<Proxy>) + Send + Sync>;
+pub type ResultCallback = Arc<
+    dyn Fn(Combo, CheckResult, Option<Proxy>) -> futures::future::BoxFuture<'static, ()>
+        + Send
+        + Sync,
+>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CheckerState {
@@ -123,7 +127,7 @@ impl Checker {
             while let Some((combo, result, proxy)) = result_rx.recv().await {
                 // Call the callback if provided
                 if let Some(ref callback) = result_callback {
-                    callback(combo.clone(), result.clone(), proxy.clone());
+                    callback(combo.clone(), result.clone(), proxy.clone()).await;
                 }
 
                 let result_type = result.status.to_string();
