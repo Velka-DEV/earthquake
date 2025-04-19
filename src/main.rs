@@ -88,7 +88,7 @@ async fn display_stats(checker: Arc<earthquake::checker::Checker>) {
         println!("Checked: {}/{}", stats.checked(), stats.total());
         println!("Hits: {}", stats.hits());
         println!("Free: {}", stats.free());
-        println!("Errors: {}", stats.error());
+        println!("Errors: {}", stats.errors());
         println!("Invalid: {}", stats.invalid());
         println!("Banned: {}", stats.banned());
         println!("Retries: {}", stats.retries());

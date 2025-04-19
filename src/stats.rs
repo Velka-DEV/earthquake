@@ -173,7 +173,7 @@ impl Stats {
         self.get_result_count(ResultStatus::Free)
     }
 
-    pub fn error(&self) -> usize {
+    pub fn errors(&self) -> usize {
         self.get_result_count(ResultStatus::Error)
     }
 
