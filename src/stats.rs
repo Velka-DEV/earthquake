@@ -34,7 +34,7 @@ impl Default for Stats {
 
         result_counts.insert(ResultStatus::Hit, 0);
         result_counts.insert(ResultStatus::Free, 0);
-        result_counts.insert(ResultStatus::Failed, 0);
+        result_counts.insert(ResultStatus::Error, 0);
         result_counts.insert(ResultStatus::Invalid, 0);
         result_counts.insert(ResultStatus::Banned, 0);
         result_counts.insert(ResultStatus::Retry, 0);
@@ -174,7 +174,7 @@ impl Stats {
     }
 
     pub fn failed(&self) -> usize {
-        self.get_result_count(ResultStatus::Failed)
+        self.get_result_count(ResultStatus::Error)
     }
 
     pub fn invalid(&self) -> usize {
@@ -215,7 +215,7 @@ impl Stats {
             checked: *self.checked.read(),
             hits: *result_counts.get(&ResultStatus::Hit).unwrap_or(&0),
             free: *result_counts.get(&ResultStatus::Free).unwrap_or(&0),
-            failed: *result_counts.get(&ResultStatus::Failed).unwrap_or(&0),
+            failed: *result_counts.get(&ResultStatus::Error).unwrap_or(&0),
             invalid: *result_counts.get(&ResultStatus::Invalid).unwrap_or(&0),
             banned: *result_counts.get(&ResultStatus::Banned).unwrap_or(&0),
             retries: *result_counts.get(&ResultStatus::Retry).unwrap_or(&0),

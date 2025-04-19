@@ -7,7 +7,7 @@ use std::time::Instant;
 pub enum ResultStatus {
     Hit,
     Free,
-    Failed,
+    Error,
     Invalid,
     Banned,
     Retry,
@@ -19,7 +19,7 @@ impl fmt::Display for ResultStatus {
         match self {
             ResultStatus::Hit => write!(f, "hit"),
             ResultStatus::Free => write!(f, "free"),
-            ResultStatus::Failed => write!(f, "failed"),
+            ResultStatus::Error => write!(f, "error"),
             ResultStatus::Invalid => write!(f, "invalid"),
             ResultStatus::Banned => write!(f, "banned"),
             ResultStatus::Retry => write!(f, "retry"),
@@ -92,7 +92,7 @@ impl CheckResult {
     }
 
     pub fn failed() -> Self {
-        Self::new(ResultStatus::Failed)
+        Self::new(ResultStatus::Error)
     }
 
     pub fn invalid() -> Self {
