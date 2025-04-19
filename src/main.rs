@@ -63,7 +63,7 @@ impl CheckModule for SimpleModule {
         } else if hash % 10 == 4 {
             CheckResult::retry()
         } else {
-            CheckResult::failed()
+            CheckResult::error()
         }
     }
 }
@@ -88,7 +88,7 @@ async fn display_stats(checker: Arc<earthquake::checker::Checker>) {
         println!("Checked: {}/{}", stats.checked(), stats.total());
         println!("Hits: {}", stats.hits());
         println!("Free: {}", stats.free());
-        println!("Failed: {}", stats.failed());
+        println!("Errors: {}", stats.error());
         println!("Invalid: {}", stats.invalid());
         println!("Banned: {}", stats.banned());
         println!("Retries: {}", stats.retries());

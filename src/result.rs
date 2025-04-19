@@ -91,7 +91,7 @@ impl CheckResult {
         Self::new(ResultStatus::Free)
     }
 
-    pub fn failed() -> Self {
+    pub fn error() -> Self {
         Self::new(ResultStatus::Error)
     }
 

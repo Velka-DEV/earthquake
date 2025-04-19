@@ -12,7 +12,7 @@ pub struct DetailedStats {
     pub checked: usize,
     pub hits: usize,
     pub free: usize,
-    pub failed: usize,
+    pub error: usize,
     pub invalid: usize,
     pub banned: usize,
     pub retries: usize,
@@ -173,7 +173,7 @@ impl Stats {
         self.get_result_count(ResultStatus::Free)
     }
 
-    pub fn failed(&self) -> usize {
+    pub fn error(&self) -> usize {
         self.get_result_count(ResultStatus::Error)
     }
 
@@ -215,7 +215,7 @@ impl Stats {
             checked: *self.checked.read(),
             hits: *result_counts.get(&ResultStatus::Hit).unwrap_or(&0),
             free: *result_counts.get(&ResultStatus::Free).unwrap_or(&0),
-            failed: *result_counts.get(&ResultStatus::Error).unwrap_or(&0),
+            error: *result_counts.get(&ResultStatus::Error).unwrap_or(&0),
             invalid: *result_counts.get(&ResultStatus::Invalid).unwrap_or(&0),
             banned: *result_counts.get(&ResultStatus::Banned).unwrap_or(&0),
             retries: *result_counts.get(&ResultStatus::Retry).unwrap_or(&0),
