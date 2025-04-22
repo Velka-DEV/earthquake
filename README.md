@@ -16,6 +16,7 @@ Earthquake is an open-source Rust framework designed for efficient credential st
 - **Retry System**: Ensures no lines are skipped due to network errors
 - **Organized Results**: Saves results to categorized files by result type
 - **Configuration**: Save/load configurations for quick startup
+- **Capture System**: Metadata collection for additional information
 
 ## Quickstart
 
@@ -93,6 +94,60 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - `src/result.rs` - Result type definitions
 - `src/stats.rs` - Statistics tracking
 - `src/util.rs` - Utility functions
+
+## Validation System
+
+Earthquake provides a powerful validation system for filtering combos based on specific rules. This is useful for modules that only work with certain types of credentials.
+
+### Built-in Validators
+
+- `EmailUsernameValidator`: Ensures the username is a valid email address
+- `PasswordLengthValidator`: Validates password length within a specified range
+- `RegexValidator`: Validates credentials against a custom regex pattern
+- `CombinedValidator`: Combines multiple validators with AND/OR logic
+
+### Using Validators
+
+```rust
+// Using the factory methods
+let validators = vec![
+    Validators::email(),                // Require email format
+    Validators::password_length(8, 20), // Password between 8-20 chars
+];
+
+// Using the builder pattern with a file combo provider
+let provider = FileComboProvider::new("combos.txt")
+    .with_email_validator()
+    .with_password_length(8, 20)
+    .with_regex_filter("@gmail\\.com")?;
+```
+
+### Custom Validators
+
+You can implement your own validators by implementing the `ComboValidator` trait:
+
+```rust
+struct CustomDomainValidator {
+    domains: Vec<String>,
+}
+
+impl ComboValidator for CustomDomainValidator {
+    fn validate(&self, combo: &Combo) -> bool {
+        // Check if username ends with any of the allowed domains
+        for domain in &self.domains {
+            if combo.username.ends_with(domain) {
+                return true;
+            }
+        }
+        false
+    }
+}
+
+// Usage
+let validator = Box::new(CustomDomainValidator {
+    domains: vec!["@gmail.com".to_string(), "@outlook.com".to_string()],
+});
+```
 
 ## Security Notice
 

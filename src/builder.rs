@@ -4,6 +4,7 @@ use crate::combo::{ComboProvider, FileComboProvider};
 use crate::config::Config;
 use crate::proxy::{FileProxyProvider, ProxyProvider};
 use crate::result::CheckResult;
+use crate::validation::ComboValidator;
 use crate::{Combo, Result};
 use futures::Future;
 use reqwest::Client;
@@ -17,6 +18,8 @@ pub struct CheckerBuilder {
     proxy_provider: Option<Arc<dyn ProxyProvider>>,
     check_fn: Option<CheckFunction>,
     check_result_callback: Option<CheckResultCallback>,
+    validators: Vec<Box<dyn ComboValidator>>,
+    check_module: Option<Arc<dyn CheckModule>>,
 }
 
 impl CheckerBuilder {
@@ -27,6 +30,8 @@ impl CheckerBuilder {
             proxy_provider: None,
             check_fn: None,
             check_result_callback: None,
+            validators: Vec::new(),
+            check_module: None,
         }
     }
 
@@ -60,12 +65,28 @@ impl CheckerBuilder {
         self
     }
 
-    pub fn with_combo_file(self, path: impl Into<String>) -> Result<Self> {
+    pub fn with_validator(mut self, validator: Box<dyn ComboValidator>) -> Self {
+        self.validators.push(validator);
+        self
+    }
+
+    pub fn with_combo_file(mut self, path: impl Into<String>) -> Result<Self> {
         let separator = self.config.combo_separator.clone();
         let mut provider = FileComboProvider::new(path).with_separator(separator);
 
         if let Some(pattern) = &self.config.combo_regex_filter {
             provider = provider.with_regex_filter(pattern)?;
+        }
+
+        let validators = std::mem::take(&mut self.validators);
+        for validator in validators {
+            provider = provider.with_validator(validator);
+        }
+
+        if let Some(module) = &self.check_module {
+            for validator in module.get_validators() {
+                provider = provider.with_validator(validator);
+            }
         }
 
         provider.load()?;
@@ -117,7 +138,9 @@ impl CheckerBuilder {
         self
     }
 
-    pub fn with_check_module(self, module: Arc<dyn CheckModule>) -> Self {
+    pub fn with_check_module(mut self, module: Arc<dyn CheckModule>) -> Self {
+        self.check_module = Some(module.clone());
+
         self.with_check_function(move |client, combo, proxy| {
             let module = module.clone();
             async move { module.check(client, combo, proxy).await }

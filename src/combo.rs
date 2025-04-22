@@ -1,7 +1,9 @@
 use crate::Result;
 use crate::error::Error;
+use crate::validation::{
+    ComboValidator, EmailUsernameValidator, PasswordLengthValidator, RegexValidator,
+};
 use async_trait::async_trait;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -67,7 +69,7 @@ pub struct FileComboProvider {
     path: String,
     combos: Arc<parking_lot::RwLock<Vec<String>>>,
     position: Arc<parking_lot::RwLock<usize>>,
-    regex_filter: Option<Regex>,
+    validators: Vec<Box<dyn ComboValidator>>,
     separator: String,
 }
 
@@ -77,7 +79,7 @@ impl FileComboProvider {
             path: path.into(),
             combos: Arc::new(parking_lot::RwLock::new(Vec::new())),
             position: Arc::new(parking_lot::RwLock::new(0)),
-            regex_filter: None,
+            validators: Vec::new(),
             separator: ":".to_string(),
         }
     }
@@ -88,8 +90,24 @@ impl FileComboProvider {
     }
 
     pub fn with_regex_filter(mut self, pattern: &str) -> Result<Self> {
-        self.regex_filter = Some(Regex::new(pattern)?);
+        self.validators
+            .push(Box::new(RegexValidator::new(pattern)?));
         Ok(self)
+    }
+
+    pub fn with_validator(mut self, validator: Box<dyn ComboValidator>) -> Self {
+        self.validators.push(validator);
+        self
+    }
+
+    pub fn with_email_validator(self) -> Self {
+        self.with_validator(Box::new(EmailUsernameValidator))
+    }
+
+    pub fn with_password_length(self, min_length: usize, max_length: usize) -> Self {
+        self.with_validator(Box::new(PasswordLengthValidator::new(
+            min_length, max_length,
+        )))
     }
 
     pub fn load(&self) -> Result<()> {
@@ -105,19 +123,31 @@ impl FileComboProvider {
                 continue;
             }
 
-            if let Some(ref regex) = self.regex_filter {
-                if !regex.is_match(line) {
-                    continue;
+            if let Ok(combo) = Combo::from_raw(line, Some(&self.separator)) {
+                if self.validate_combo(&combo) {
+                    combos.push(line.to_string());
                 }
             }
-
-            combos.push(line.to_string());
         }
 
         *self.combos.write() = combos;
         *self.position.write() = 0;
 
         Ok(())
+    }
+
+    fn validate_combo(&self, combo: &Combo) -> bool {
+        if self.validators.is_empty() {
+            return true;
+        }
+
+        for validator in &self.validators {
+            if !validator.validate(combo) {
+                return false;
+            }
+        }
+
+        true
     }
 
     pub fn save_remaining(&self, path: impl AsRef<Path>) -> Result<usize> {

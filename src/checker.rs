@@ -6,6 +6,7 @@ use crate::proxy::{Proxy, ProxyProvider};
 use crate::result::{CheckResult, ResultStatus};
 use crate::stats::Stats;
 use crate::util;
+use crate::validation::ComboValidator;
 use async_trait::async_trait;
 use futures::Future;
 use futures::stream::{self, StreamExt};
@@ -319,9 +320,6 @@ impl Checker {
 
     pub async fn save_remaining(&self, _path: impl AsRef<Path>) -> Result<usize> {
         if let Some(_provider) = &self.combo_provider {
-            // This is a design limitation; the ComboProvider trait doesn't provide save_remaining method
-            // We'd need to implement a way to access concrete types or add this method to the trait
-
             Err(Error::Unknown(
                 "Save remaining not implemented yet".to_string(),
             ))
@@ -350,4 +348,8 @@ pub trait CheckModule: Send + Sync {
     fn author(&self) -> &str;
     fn description(&self) -> &str;
     async fn check(&self, client: Arc<Client>, combo: Combo, proxy: Option<Proxy>) -> CheckResult;
+
+    fn get_validators(&self) -> Vec<Box<dyn ComboValidator>> {
+        Vec::new()
+    }
 }

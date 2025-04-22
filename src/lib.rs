@@ -7,6 +7,7 @@ pub mod proxy;
 pub mod result;
 pub mod stats;
 pub mod util;
+pub mod validation;
 
 pub use builder::CheckerBuilder;
 pub use checker::Checker;
@@ -15,6 +16,7 @@ pub use config::Config;
 pub use error::Error;
 pub use proxy::{Proxy, ProxyProvider};
 pub use result::{CheckResult, ResultStatus};
+pub use validation::{ComboValidator, Validators};
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 

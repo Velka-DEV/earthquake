@@ -1,10 +1,12 @@
 use earthquake::{
+    ComboValidator,
     builder::CheckerBuilder,
     checker::{CheckModule, CheckerState},
     combo::Combo,
     proxy::Proxy,
     result::CheckResult,
     stats::Stats,
+    validation::{EmailUsernameValidator, PasswordLengthValidator},
 };
 use reqwest::Client;
 use std::sync::Arc;
@@ -29,6 +31,13 @@ impl CheckModule for SimpleModule {
 
     fn description(&self) -> &str {
         "A simple example module for demonstration"
+    }
+
+    fn get_validators(&self) -> Vec<Box<dyn ComboValidator>> {
+        vec![
+            Box::new(EmailUsernameValidator),
+            Box::new(PasswordLengthValidator::new(6, 30)),
+        ]
     }
 
     async fn check(
