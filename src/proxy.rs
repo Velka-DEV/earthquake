@@ -191,7 +191,13 @@ impl FileProxyProvider {
         let mut proxies = Vec::new();
 
         for line in reader.lines() {
-            let line = line?;
+            let line = line;
+
+            if line.is_err() {
+                continue;
+            }
+
+            let line = line.unwrap();
             let line = line.trim();
 
             if line.is_empty() {
