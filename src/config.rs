@@ -1,8 +1,70 @@
+use crate::result::ResultStatus;
 use crate::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OutputConfig {
+    pub save_hits: bool,
+    pub save_free: bool,
+    pub save_errors: bool,
+    pub save_invalid: bool,
+    pub save_banned: bool,
+    pub save_retries: bool,
+    pub save_unknown: bool,
+}
+
+impl Default for OutputConfig {
+    fn default() -> Self {
+        Self {
+            save_hits: true,
+            save_free: true,
+            save_errors: true,
+            save_invalid: false,
+            save_banned: true,
+            save_retries: false,
+            save_unknown: true,
+        }
+    }
+}
+
+impl OutputConfig {
+    pub fn should_save(&self, status: ResultStatus) -> bool {
+        match status {
+            ResultStatus::Hit => self.save_hits,
+            ResultStatus::Free => self.save_free,
+            ResultStatus::Error => self.save_errors,
+            ResultStatus::Invalid => self.save_invalid,
+            ResultStatus::Banned => self.save_banned,
+            ResultStatus::Retry => self.save_retries,
+            ResultStatus::Unknown => self.save_unknown,
+        }
+    }
+
+    pub fn enable_all(mut self) -> Self {
+        self.save_hits = true;
+        self.save_free = true;
+        self.save_errors = true;
+        self.save_invalid = true;
+        self.save_banned = true;
+        self.save_retries = true;
+        self.save_unknown = true;
+        self
+    }
+
+    pub fn disable_all(mut self) -> Self {
+        self.save_hits = false;
+        self.save_free = false;
+        self.save_errors = false;
+        self.save_invalid = false;
+        self.save_banned = false;
+        self.save_retries = false;
+        self.save_unknown = false;
+        self
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -19,6 +81,7 @@ pub struct Config {
     pub random_proxies: bool,
     pub combos_path: Option<String>,
     pub save_dir: String,
+    pub output_config: OutputConfig,
 }
 
 impl Default for Config {
@@ -36,6 +99,7 @@ impl Default for Config {
             random_proxies: false,
             combos_path: None,
             save_dir: "results".to_string(),
+            output_config: OutputConfig::default(),
         }
     }
 }
@@ -95,6 +159,37 @@ impl Config {
 
     pub fn with_save_dir(mut self, dir: impl Into<String>) -> Self {
         self.save_dir = dir.into();
+        self
+    }
+
+    pub fn with_output_config(mut self, output_config: OutputConfig) -> Self {
+        self.output_config = output_config;
+        self
+    }
+
+    pub fn enable_saving_for(mut self, status: ResultStatus) -> Self {
+        match status {
+            ResultStatus::Hit => self.output_config.save_hits = true,
+            ResultStatus::Free => self.output_config.save_free = true,
+            ResultStatus::Error => self.output_config.save_errors = true,
+            ResultStatus::Invalid => self.output_config.save_invalid = true,
+            ResultStatus::Banned => self.output_config.save_banned = true,
+            ResultStatus::Retry => self.output_config.save_retries = true,
+            ResultStatus::Unknown => self.output_config.save_unknown = true,
+        }
+        self
+    }
+
+    pub fn disable_saving_for(mut self, status: ResultStatus) -> Self {
+        match status {
+            ResultStatus::Hit => self.output_config.save_hits = false,
+            ResultStatus::Free => self.output_config.save_free = false,
+            ResultStatus::Error => self.output_config.save_errors = false,
+            ResultStatus::Invalid => self.output_config.save_invalid = false,
+            ResultStatus::Banned => self.output_config.save_banned = false,
+            ResultStatus::Retry => self.output_config.save_retries = false,
+            ResultStatus::Unknown => self.output_config.save_unknown = false,
+        }
         self
     }
 

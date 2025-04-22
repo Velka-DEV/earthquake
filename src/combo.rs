@@ -1,5 +1,5 @@
-use crate::error::Error;
 use crate::Result;
+use crate::error::Error;
 use async_trait::async_trait;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -34,7 +34,7 @@ impl Combo {
 
         let parts: Vec<&str> = raw.split(separator).collect();
 
-        if parts.len() < 2 {
+        if parts.len() != 2 {
             return Err(Error::InvalidCombo(format!(
                 "Invalid combo format: {}",
                 raw

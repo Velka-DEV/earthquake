@@ -125,6 +125,10 @@ impl Checker {
             let mut result_paths = std::collections::HashMap::new();
 
             while let Some((combo, result)) = result_rx.recv().await {
+                if !config_clone.output_config.should_save(result.status) {
+                    continue;
+                }
+
                 let result_type = result.status.to_string();
 
                 let path = result_paths
